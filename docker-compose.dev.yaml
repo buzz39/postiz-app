@@ -1,5 +1,5 @@
-# Production-ready docker-compose.yml for Postiz on Coolify
-# Based on official Postiz documentation: https://docs.postiz.com/installation/docker-compose
+# Production-ready Postiz deployment for Coolify
+# Fixes port conflicts and removes unnecessary services
 
 services:
   postiz:
@@ -7,30 +7,28 @@ services:
     container_name: postiz
     restart: always
     environment:
-      # Core URLs - Update with your actual domain
+      # Core configuration
       MAIN_URL: "https://${SERVICE_FQDN_POSTIZ:-localhost:5000}"
-      FRONTEND_URL: "https://${SERVICE_FQDN_POSTIZ:-localhost:5000}" 
+      FRONTEND_URL: "https://${SERVICE_FQDN_POSTIZ:-localhost:5000}"
       NEXT_PUBLIC_BACKEND_URL: "https://${SERVICE_FQDN_POSTIZ:-localhost:5000}/api"
       
       # Security
-      JWT_SECRET: "${SERVICE_BASE64_64_POSTIZ:-your_random_32_char_string_here_make_it_unique}"
-      NOT_SECURED: "false"  # Set to true only for HTTP (not recommended)
+      JWT_SECRET: "${SERVICE_BASE64_64_POSTIZ:-generate_random_32_char_string_here}"
+      NOT_SECURED: "false"
       
-      # Database connections
+      # Database configuration
       DATABASE_URL: "postgresql://postiz-local:${SERVICE_PASSWORD_64_POSTGRES:-postiz-password}@postiz-postgres:5432/postiz-db-local"
       REDIS_URL: "redis://postiz-redis:6379"
       BACKEND_INTERNAL_URL: "http://localhost:3000"
       
-      # Self-hosting flag
+      # Application settings
       IS_GENERAL: "true"
+      DISABLE_REGISTRATION: "${DISABLE_REGISTRATION:-false}"
       
-      # Storage configuration
+      # Storage
       STORAGE_PROVIDER: "local"
       UPLOAD_DIRECTORY: "/uploads"
       NEXT_PUBLIC_UPLOAD_DIRECTORY: "/uploads"
-      
-      # Registration control
-      DISABLE_REGISTRATION: "${DISABLE_REGISTRATION:-false}"
       
     volumes:
       - postiz-config:/config/
@@ -55,7 +53,7 @@ services:
       POSTGRES_DB: postiz-db-local
     volumes:
       - postgres-volume:/var/lib/postgresql/data
-    # NO PORTS SECTION - This fixes the port conflict!
+    # *** NO PORTS SECTION - This prevents the port 5432 conflict ***
     networks:
       - postiz-network
     healthcheck:
@@ -68,9 +66,9 @@ services:
     image: redis:7.2
     container_name: postiz-redis
     restart: always
-    # NO PORTS SECTION - This fixes potential Redis conflicts!
     volumes:
       - postiz-redis-data:/data
+    # *** NO PORTS SECTION - This prevents Redis conflicts ***
     networks:
       - postiz-network
     healthcheck:
