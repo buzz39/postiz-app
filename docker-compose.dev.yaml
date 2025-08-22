@@ -1,61 +1,92 @@
-# Do **not** use this yml for production. It is not up-to-date.
-# Use https://docs.postiz.com/installation/docker-compose
-# This is only for the dev enviroment
+# Production-ready docker-compose.yml for Postiz on Coolify
+# Based on official Postiz documentation: https://docs.postiz.com/installation/docker-compose
 
 services:
+  postiz:
+    image: ghcr.io/gitroomhq/postiz-app:latest
+    container_name: postiz
+    restart: always
+    environment:
+      # Core URLs - Update with your actual domain
+      MAIN_URL: "https://${SERVICE_FQDN_POSTIZ:-localhost:5000}"
+      FRONTEND_URL: "https://${SERVICE_FQDN_POSTIZ:-localhost:5000}" 
+      NEXT_PUBLIC_BACKEND_URL: "https://${SERVICE_FQDN_POSTIZ:-localhost:5000}/api"
+      
+      # Security
+      JWT_SECRET: "${SERVICE_BASE64_64_POSTIZ:-your_random_32_char_string_here_make_it_unique}"
+      NOT_SECURED: "false"  # Set to true only for HTTP (not recommended)
+      
+      # Database connections
+      DATABASE_URL: "postgresql://postiz-local:${SERVICE_PASSWORD_64_POSTGRES:-postiz-password}@postiz-postgres:5432/postiz-db-local"
+      REDIS_URL: "redis://postiz-redis:6379"
+      BACKEND_INTERNAL_URL: "http://localhost:3000"
+      
+      # Self-hosting flag
+      IS_GENERAL: "true"
+      
+      # Storage configuration
+      STORAGE_PROVIDER: "local"
+      UPLOAD_DIRECTORY: "/uploads"
+      NEXT_PUBLIC_UPLOAD_DIRECTORY: "/uploads"
+      
+      # Registration control
+      DISABLE_REGISTRATION: "${DISABLE_REGISTRATION:-false}"
+      
+    volumes:
+      - postiz-config:/config/
+      - postiz-uploads:/uploads/
+    ports:
+      - "5000:5000"
+    networks:
+      - postiz-network
+    depends_on:
+      postiz-postgres:
+        condition: service_healthy
+      postiz-redis:
+        condition: service_healthy
+
   postiz-postgres:
-    # ref: https://hub.docker.com/_/postgres
-    image: postgres:17-alpine # 17.0
+    image: postgres:17-alpine
     container_name: postiz-postgres
     restart: always
     environment:
-      POSTGRES_PASSWORD: postiz-local-pwd
+      POSTGRES_PASSWORD: "${SERVICE_PASSWORD_64_POSTGRES:-postiz-password}"
       POSTGRES_USER: postiz-local
       POSTGRES_DB: postiz-db-local
     volumes:
       - postgres-volume:/var/lib/postgresql/data
-    ports:
-      - 5432:5432
+    # NO PORTS SECTION - This fixes the port conflict!
     networks:
       - postiz-network
+    healthcheck:
+      test: pg_isready -U postiz-local -d postiz-db-local
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   postiz-redis:
-    # ref: https://hub.docker.com/_/redis
-    image: redis:7-alpine # 7.4.0
+    image: redis:7.2
     container_name: postiz-redis
     restart: always
-    ports:
-      - 6379:6379
-    networks:
-      - postiz-network
-  postiz-pg-admin:
-    # ref: https://hub.docker.com/r/dpage/pgadmin4/tags
-    image: dpage/pgadmin4:latest
-    container_name: postiz-pg-admin
-    restart: always
-    ports:
-      - 8081:80
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    networks:
-      - postiz-network
-  postiz-redisinsight:
-    # ref: https://hub.docker.com/r/redis/redisinsight
-    image: redis/redisinsight:latest
-    container_name: postiz-redisinsight
-    links:
-      - postiz-redis
-    ports:
-      - '5540:5540'
+    # NO PORTS SECTION - This fixes potential Redis conflicts!
     volumes:
-      - redisinsight:/data
+      - postiz-redis-data:/data
     networks:
       - postiz-network
-    restart: always
+    healthcheck:
+      test: redis-cli ping
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
 volumes:
-  redisinsight:
   postgres-volume:
+    external: false
+  postiz-redis-data:
+    external: false
+  postiz-config:
+    external: false
+  postiz-uploads:
     external: false
 
 networks:
