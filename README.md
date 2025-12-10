@@ -1,10 +1,4 @@
 <p align="center">
-  <a href="https://affiliate.postiz.com">
-    <img src="https://github.com/user-attachments/assets/af9f47b3-e20c-402b-bd11-02f39248d738" />
-  </a>
-</p>
-
-<p align="center">
   <a href="https://postiz.com/" target="_blank">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/765e9d72-3ee7-4a56-9d59-a2c9befe2311">
@@ -90,6 +84,7 @@
 - Collaborate with other team members to exchange or buy posts.
 - Invite your team members to collaborate, comment, and schedule posts.
 - At the moment there is no difference between the hosted version to the self-hosted version
+- Perfect for automation (API) with platforms like N8N, Make.com, Zapier, etc.
 
 ## Tech Stack
 

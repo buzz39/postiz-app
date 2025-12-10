@@ -16,7 +16,6 @@ import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integ
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@prisma/client';
-import { ApiKeyDto } from '@gitroom/nestjs-libraries/dtos/integrations/api.key.dto';
 import { IntegrationFunctionDto } from '@gitroom/nestjs-libraries/dtos/integrations/integration.function.dto';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -39,6 +38,7 @@ import {
   Sections,
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 import { uniqBy } from 'lodash';
+import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 
 @ApiTags('Integrations')
 @Controller('/integrations')
@@ -46,10 +46,11 @@ export class IntegrationsController {
   constructor(
     private _integrationManager: IntegrationManager,
     private _integrationService: IntegrationService,
-    private _postService: PostsService
+    private _postService: PostsService,
+    private _refreshIntegrationService: RefreshIntegrationService
   ) {}
   @Get('/')
-  getIntegration() {
+  getIntegrations() {
     return this._integrationManager.getAllIntegrations();
   }
 
@@ -339,37 +340,24 @@ export class IntegrationsController {
         return load;
       } catch (err) {
         if (err instanceof RefreshToken) {
-          const { accessToken, refreshToken, expiresIn, additionalSettings } =
-            await integrationProvider.refreshToken(getIntegration.refreshToken);
+          const data = await this._refreshIntegrationService.refresh(
+            getIntegration
+          );
+
+          if (!data) {
+            return;
+          }
+
+          const { accessToken } = data;
 
           if (accessToken) {
-            await this._integrationService.createOrUpdateIntegration(
-              additionalSettings,
-              !!integrationProvider.oneTimeToken,
-              getIntegration.organizationId,
-              getIntegration.name,
-              getIntegration.picture!,
-              'social',
-              getIntegration.internalId,
-              getIntegration.providerIdentifier,
-              accessToken,
-              refreshToken,
-              expiresIn
-            );
-
-            getIntegration.token = accessToken;
-
             if (integrationProvider.refreshWait) {
               await timer(10000);
             }
             return this.functionIntegration(org, body);
-          } else {
-            await this._integrationService.disconnectChannel(
-              org.id,
-              getIntegration
-            );
-            return false;
           }
+
+          return false;
         }
 
         return false;
@@ -460,7 +448,7 @@ export class IntegrationsController {
           refresh,
           auth.accessToken
         );
-        return res(newAuth);
+        return res({ ...newAuth, refreshToken: body.refresh });
       }
 
       return res(auth);
@@ -534,31 +522,13 @@ export class IntegrationsController {
     return this._integrationService.disableChannel(org.id, id);
   }
 
-  @Post('/instagram/:id')
-  async saveInstagram(
+  @Post('/provider/:id/connect')
+  async saveProviderPage(
     @Param('id') id: string,
-    @Body() body: { pageId: string; id: string },
+    @Body() body: any,
     @GetOrgFromRequest() org: Organization
   ) {
-    return this._integrationService.saveInstagram(org.id, id, body);
-  }
-
-  @Post('/facebook/:id')
-  async saveFacebook(
-    @Param('id') id: string,
-    @Body() body: { page: string },
-    @GetOrgFromRequest() org: Organization
-  ) {
-    return this._integrationService.saveFacebook(org.id, id, body.page);
-  }
-
-  @Post('/linkedin-page/:id')
-  async saveLinkedin(
-    @Param('id') id: string,
-    @Body() body: { page: string },
-    @GetOrgFromRequest() org: Organization
-  ) {
-    return this._integrationService.saveLinkedin(org.id, id, body.page);
+    return this._integrationService.saveProviderPage(org.id, id, body);
   }
 
   @Post('/enable')

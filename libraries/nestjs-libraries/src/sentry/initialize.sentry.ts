@@ -25,10 +25,18 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
       integrations: [
         // Add our Profiling integration
         nodeProfilingIntegration(),
-        Sentry.consoleLoggingIntegration({ levels: ['log', 'error', 'warn'] }),
+        Sentry.consoleLoggingIntegration({ levels: ['log', 'info', 'warn', 'error', 'debug', 'assert', 'trace'] }),
+        Sentry.openAIIntegration({
+          recordInputs: true,
+          recordOutputs: true,
+        }),
       ],
-      tracesSampleRate: process.env.NODE_ENV === 'development' ? 1.0 : 0.3,
+      tracesSampleRate: 1.0,
       enableLogs: true,
+
+      // Profiling
+      profileSessionSampleRate: process.env.NODE_ENV === 'development' ? 1.0 : 0.45,
+      profileLifecycle: 'trace',
     });
   } catch (err) {
     console.log(err);

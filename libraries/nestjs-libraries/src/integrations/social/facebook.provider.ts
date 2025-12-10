@@ -9,6 +9,7 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import dayjs from 'dayjs';
 import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { FacebookDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/facebook.dto';
+import { DribbbleDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/dribbble.dto';
 
 export class FacebookProvider extends SocialAbstract implements SocialProvider {
   identifier = 'facebook';
@@ -24,6 +25,10 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
   ];
   override maxConcurrentJob = 3; // Facebook has reasonable rate limits
   editor = 'normal' as const;
+  maxLength() {
+    return 63206;
+  }
+  dto = FacebookDto;
 
   override handleErrors(body: string):
     | {
@@ -78,7 +83,8 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     if (body.indexOf('1404006') > -1) {
       return {
         type: 'bad-body' as const,
-        value: "We couldn't post your comment, A security check in facebook required to proceed.",
+        value:
+          "We couldn't post your comment, A security check in facebook required to proceed.",
       };
     }
 
@@ -176,18 +182,15 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     id: string,
     requiredId: string,
     accessToken: string
-  ): Promise<AuthTokenDetails> {
-    const information = await this.fetchPageInformation(
-      accessToken,
-      requiredId
-    );
+  ): Promise<Omit<AuthTokenDetails, 'refreshToken' | 'expiresIn'>> {
+    const information = await this.fetchPageInformation(accessToken, {
+      page: requiredId,
+    });
 
     return {
       id: information.id,
       name: information.name,
       accessToken: information.access_token,
-      refreshToken: information.access_token,
-      expiresIn: dayjs().add(59, 'days').unix() - dayjs().unix(),
       picture: information.picture,
       username: information.username,
     };
@@ -233,11 +236,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       .map((p: any) => p.permission);
     this.checkScopes(this.scopes, permissions);
 
-    const {
-      id,
-      name,
-      picture
-    } = await (
+    const { id, name, picture } = await (
       await fetch(
         `https://graph.facebook.com/v20.0/me?fields=id,name,picture&access_token=${access_token}`
       )
@@ -264,7 +263,8 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     return data;
   }
 
-  async fetchPageInformation(accessToken: string, pageId: string) {
+  async fetchPageInformation(accessToken: string, data: { page: string }) {
+    const pageId = data.page;
     const {
       id,
       name,

@@ -28,6 +28,9 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 2; // Threads has moderate rate limits
 
   editor = 'normal' as const;
+  maxLength() {
+    return 500;
+  }
 
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {
     const { access_token } = await (
@@ -36,12 +39,9 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
       )
     ).json();
 
-    const {
-      id,
-      name,
-      username,
-      picture
-    } = await this.fetchPageInformation(access_token);
+    const { id, name, username, picture } = await this.fetchUserInfo(
+      access_token
+    );
 
     return {
       id,
@@ -49,7 +49,7 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
       accessToken: access_token,
       refreshToken: access_token,
       expiresIn: dayjs().add(59, 'days').unix() - dayjs().unix(),
-      picture: picture?.data?.url || '',
+      picture: picture || '',
       username: '',
     };
   }
@@ -58,7 +58,7 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
     const state = makeId(6);
     return {
       url:
-        'https://threads.net/oauth/authorize' +
+        'https://www.threads.net/oauth/authorize' +
         `?client_id=${process.env.THREADS_APP_ID}` +
         `&redirect_uri=${encodeURIComponent(
           `${
@@ -105,12 +105,9 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
       )
     ).json();
 
-    const {
-      id,
-      name,
-      username,
-      picture,
-    } = await this.fetchPageInformation(access_token);
+    const { id, name, username, picture } = await this.fetchUserInfo(
+      access_token
+    );
 
     return {
       id,
@@ -118,7 +115,7 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
       accessToken: access_token,
       refreshToken: access_token,
       expiresIn: dayjs().add(59, 'days').unix() - dayjs().unix(),
-      picture: picture?.data?.url || '',
+      picture: picture || '',
       username: username,
     };
   }
@@ -146,8 +143,8 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
     return this.checkLoaded(mediaContainerId, accessToken);
   }
 
-  async fetchPageInformation(accessToken: string) {
-    const { id, username, threads_profile_picture_url, access_token } = await (
+  private async fetchUserInfo(accessToken: string) {
+    const { id, username, threads_profile_picture_url } = await (
       await this.fetch(
         `https://graph.threads.net/v1.0/me?fields=id,username,threads_profile_picture_url&access_token=${accessToken}`
       )
@@ -156,8 +153,7 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
     return {
       id,
       name: username,
-      access_token,
-      picture: { data: { url: threads_profile_picture_url } },
+      picture: threads_profile_picture_url || '',
       username,
     };
   }

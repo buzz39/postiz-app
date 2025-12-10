@@ -6,6 +6,7 @@ export const initializeSentryClient = (environment: string, dsn: string) =>
     integrations: [
       // Add default integrations back
       Sentry.browserTracingIntegration(),
+      Sentry.browserProfilingIntegration(),
       Sentry.replayIntegration({
         maskAllText: true,
         maskAllInputs: true,
@@ -14,7 +15,10 @@ export const initializeSentryClient = (environment: string, dsn: string) =>
         // Disable the injection of the default widget
         autoInject: false,
       }),
+      Sentry.replayCanvasIntegration(),
     ],
-    replaysSessionSampleRate: environment === 'development' ? 1.0 : 0.1,
-    replaysOnErrorSampleRate: environment === 'development' ? 1.0 : 0.1,
+    replaysSessionSampleRate: 1.0,
+    replaysOnErrorSampleRate: 1.0,
+
+    profilesSampleRate: environment === 'development' ? 1.0 : 0.75,
   });

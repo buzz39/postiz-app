@@ -1,6 +1,6 @@
 'use client';
 
-import { useModals } from '@mantine/modals';
+import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import React, { FC, useCallback, useEffect, useMemo } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { Input } from '@gitroom/react/form/input';
@@ -17,6 +17,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { web3List } from '@gitroom/frontend/components/launches/web3/web3.list';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { ModalWrapperComponent } from '@gitroom/frontend/components/new-launch/modal.wrapper.component';
+import clsx from 'clsx';
 const resolver = classValidatorResolver(ApiKeyDto);
 export const useAddProvider = (update?: () => void) => {
   const modal = useModals();
@@ -24,17 +25,9 @@ export const useAddProvider = (update?: () => void) => {
   return useCallback(async () => {
     const data = await (await fetch('/integrations')).json();
     modal.openModal({
-      title: '',
-      withCloseButton: false,
-      classNames: {
-        modal: 'text-textColor',
-      },
-      size: 'auto',
-      children: (
-        <ModalWrapperComponent title="Add Channel">
-          <AddProviderComponent update={update} {...data} />
-        </ModalWrapperComponent>
-      ),
+      title: 'Add Channel',
+      withCloseButton: true,
+      children: <AddProviderComponent update={update} {...data} />,
     });
   }, []);
 };
@@ -266,6 +259,7 @@ export const CustomVariables: FC<{
   });
   const submit = useCallback(
     async (data: FieldValues) => {
+      modals.closeAll();
       gotoUrl(
         `/integrations/social/${identifier}?state=nostate&code=${Buffer.from(
           JSON.stringify(data)
@@ -349,20 +343,18 @@ export const AddProviderComponent: FC<{
             await fetch(`/integrations/social/${identifier}`)
           ).json();
           modal.openModal({
-            title: '',
+            title: 'Web3 provider',
             withCloseButton: false,
             classNames: {
               modal: 'bg-transparent text-textColor',
             },
             children: (
-              <ModalWrapperComponent title="Web3 provider">
-                <Web3Providers
-                  onComplete={(code, newState) => {
-                    window.location.href = `/integrations/social/${identifier}?code=${code}&state=${newState}`;
-                  }}
-                  nonce={url}
-                />
-              </ModalWrapperComponent>
+              <Web3Providers
+                onComplete={(code, newState) => {
+                  window.location.href = `/integrations/social/${identifier}?code=${code}&state=${newState}`;
+                }}
+                nonce={url}
+              />
             ),
           });
           return;
@@ -388,35 +380,29 @@ export const AddProviderComponent: FC<{
         if (isExternal) {
           modal.closeAll();
           modal.openModal({
-            title: '',
+            title: 'URL',
             withCloseButton: false,
             classNames: {
               modal: 'bg-transparent text-textColor',
             },
-            children: (
-              <ModalWrapperComponent title="URL">
-                <UrlModal gotoUrl={gotoIntegration} />
-              </ModalWrapperComponent>
-            ),
+            children: <UrlModal gotoUrl={gotoIntegration} />,
           });
           return;
         }
         if (customFields) {
           modal.closeAll();
           modal.openModal({
-            title: '',
+            title: 'Add Provider',
             withCloseButton: false,
             classNames: {
               modal: 'bg-transparent text-textColor',
             },
             children: (
-              <ModalWrapperComponent title="Add Provider">
-                <CustomVariables
-                  identifier={identifier}
-                  gotoUrl={(url: string) => router.push(url)}
-                  variables={customFields}
-                />
-              </ModalWrapperComponent>
+              <CustomVariables
+                identifier={identifier}
+                gotoUrl={(url: string) => router.push(url)}
+                variables={customFields}
+              />
             ),
           });
           return;
@@ -425,9 +411,7 @@ export const AddProviderComponent: FC<{
       },
     []
   );
-  const close = useCallback(() => {
-    modal.closeAll();
-  }, []);
+
   const showApiButton = useCallback(
     (identifier: string, name: string) => async () => {
       modal.openModal({
@@ -449,7 +433,6 @@ export const AddProviderComponent: FC<{
   return (
     <div className="w-full flex flex-col gap-[20px] rounded-[4px] relative">
       <div className="flex flex-col">
-        <h2 className="pt-[16px] pb-[10px]">{t('social', 'Social')}</h2>
         <div className="grid grid-cols-5 gap-[10px] justify-items-center justify-center">
           {social.map((item) => (
             <div
@@ -475,7 +458,7 @@ export const AddProviderComponent: FC<{
                   <img src={`/icons/platforms/youtube.svg`} />
                 ) : (
                   <img
-                    className="w-[32px] h-[32px] rounded-full"
+                    className={clsx("w-[32px] h-[32px]", item.identifier !== 'google_my_business' && 'rounded-full')}
                     src={`/icons/platforms/${item.identifier}.png`}
                   />
                 )}
